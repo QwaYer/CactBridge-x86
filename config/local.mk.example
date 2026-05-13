@@ -1,0 +1,5 @@
+# Copy to config/local.mk
+#
+# MB2_MODULE_SRC = /path/to/any/packed-image
+# MB2_MODULE_ISO_NAME = payload.bin
+# MB2_MODULE_CMDLINE = cctkfs
