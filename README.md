@@ -8,8 +8,8 @@
 </p>
 
 <p align="center">
-  <strong>English.</strong> Small <strong>GRUB</strong> front-end: copies a prebuilt <strong><code>kernel.bin</code></strong> and an optional <strong>Multiboot2 <code>module2</code></strong> (e.g. <strong><code>cctkfs.img</code></strong>) into a staging tree and runs <strong><code>grub-mkrescue</code></strong>.<br>
-  <strong>Русский.</strong> «Мост» только для <strong>ISO</strong>: кладёт <strong><code>kernel.bin</code></strong> и опционально модуль <strong><code>cctkfs.img</code></strong>, вызывает <strong><code>grub-mkrescue</code></strong> — не ядро и не userland.
+  <strong>English.</strong> ISO packager: copies a prebuilt <strong><code>kernel.bin</code></strong> and an optional <strong>Multiboot2 <code>module2</code></strong> (e.g. <strong><code>cctkfs.img</code></strong>) into a staging tree and runs <strong><code>grub-mkrescue</code></strong>.<br>
+  <strong>Русский.</strong> «Мост» для сборки <strong>ISO</strong>: <strong><code>build.py</code></strong> оркестрирует ядро, модули и <strong><code>grub-mkrescue</code></strong>.
 </p>
 
 ---
@@ -18,7 +18,7 @@
 
 | Piece | Role |
 | --- | --- |
-| **[CactOS-x86_32](https://github.com/QwaYer/CactOS-x86_32)** | Calls **`make iso`** here with **`KERNEL_BIN`**, **`MB2_MODULE_SRC`**, … |
+| **[CactOS-x86_32](https://github.com/QwaYer/CactOS-x86_32)** | Invokes **`build.py`** with `--non-gui-iso` or `--gui-iso` |
 | **[CactKernel-x86_32](https://github.com/QwaYer/CactKernel-x86_32)** | Produces **`build/kernel.bin`** |
 | **LocalRepoCactOS** | Produces **`cctkfs.img`** |
 
@@ -31,20 +31,23 @@
 From the workspace parent:
 
 ```sh
-make -C CactOS-x86_32 iso
+make -C CactOS-x86_32 iso       # build.py --non-gui-iso
+make -C CactOS-x86_32 iso-gui   # build.py --gui-iso
 ```
 
 **Standalone — this repository**
 
 ```sh
-make iso    # auto-detects ../CactKernel-x86_32/build/kernel.bin + ../LocalRepoCactOS/cctkfs.img
+python3 build.py                # auto-detects kernel.bin + cctkfs.img
 ```
 
-Override any path if needed: `make iso KERNEL_BIN=/custom/kernel.bin MB2_MODULE_SRC=`. See [`config.mk`](config.mk).
+Overrides via `config/local.mk.py` (see `config/local.mk.example`).
 
 ```sh
-make clean
-make printconfig   # show resolved paths
+python3 build.py --help         # show available flags
+python3 build.py --non-gui-iso  # non-GUI ISO
+python3 build.py --gui-iso      # GUI ISO
+python3 build.py --no-deps      # skip rebuild, repack only
 ```
 
 ---
@@ -53,9 +56,11 @@ make printconfig   # show resolved paths
 
 ```
 CactBridge/
-├── Makefile
-├── config.mk
-├── config/local.mk.example
+├── build.py               # ISO builder — orchestrates make in siblings + grub-mkrescue
+├── config/
+│   └── local.mk.example   # example local overrides
 ├── grub/
-└── build/           # staging + cact.iso (generated)
+│   ├── menu-with-mb2.cfg
+│   └── menu-kernel-only.cfg
+└── build/                 # staging + cact.iso (generated)
 ```
