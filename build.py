@@ -81,7 +81,14 @@ def build_deps(variant):
     xfbdev_dir = os.path.join(SRC, "CactXfbdev-x86_32")
     kern_dir = os.path.join(SRC, "CactKernel-x86_32")
     tcc_dir = os.path.join(SRC, "tinycc-for-CactOS")
-    drivers = ["AHCI", "NVMe", "Virtio-net", "Yukon"]
+    drivers = ["AHCI", "NVMe", "Virtio-net", "Yukon", "Intel-HDA"]
+
+    nano_bin = os.path.join(SRC, "Nano-for-Cact", "build", "nano.elf")
+    if not os.path.isfile(nano_bin):
+        nano_make = subprocess.run(["make", "-C", os.path.join(SRC, "Nano-for-Cact")],
+                                   capture_output=True, text=True)
+        if nano_make.returncode != 0:
+            print(f"  nano build skipped ({nano_make.stderr.strip()})")
 
     libc_opts = {"CACTLIB": lib_dir}
 
@@ -112,6 +119,7 @@ def build_deps(variant):
             "USERBINS_MK": userbins_dir,
             "LR_BIN": os.path.join(repo_dir, "lib", "bin"),
             "LR_SBIN": os.path.join(repo_dir, "lib", "sbin"),
+            "NANO_BIN": nano_bin,
         })
 
     else:
@@ -144,10 +152,14 @@ def build_deps(variant):
             "CACTSOLEINC": os.path.join(sole_dir, "include"),
             "LR_BIN": os.path.join(repo_dir, "lib", "bin"),
             "LR_SBIN": os.path.join(repo_dir, "lib", "sbin"),
+            "NANO_BIN": nano_bin,
         })
         cgoct_bin = os.path.join(cgoct_dir, "cgoct")
         shutil.copy2(cgoct_bin, os.path.join(repo_dir, "lib", "bin", "init"))
         shutil.copy2(cgoct_bin, os.path.join(repo_dir, "lib", "bin", "cgoct"))
+        test_init = os.path.join(SRC, "test_init")
+        if os.path.isfile(test_init):
+            shutil.copy2(test_init, os.path.join(repo_dir, "lib", "bin", "init"))
         etc_dir = os.path.join(repo_dir, "lib", "etc")
         os.makedirs(etc_dir, exist_ok=True)
         with open(os.path.join(etc_dir, "cgoct.conf"), "w") as f:
