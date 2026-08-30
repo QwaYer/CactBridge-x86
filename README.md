@@ -31,27 +31,55 @@
 
 **Recommended — full workspace**
 
-From the workspace parent:
+One command installs missing dependencies and builds kernel + cctkfs.img + ISO:
 
 ```sh
-make -C CactOS-x86_32 iso       # build.py --non-gui-iso
-make -C CactOS-x86_32 iso-gui   # build.py --gui-iso
+./build.sh            # check deps, install missing, build everything
+./build.sh --deps     # install/detect dependencies only (pacman + rustup nightly)
+./build.sh --build    # build only (deps already installed)
+./build.sh --run      # build, then launch QEMU
+./build.sh --clean    # clean build artefacts
 ```
 
-**Standalone — this repository**
+Required packages (installed automatically via `pacman`): `base-devel`, `binutils`,
+`nasm`, `grub`, `xorriso`, `mtools`, `python`, `e2fsprogs`, `rustup`.
+`rustup` is then configured to **nightly** with the `rust-src` component, which the
+kernel's Rust subsystems (`-Z build-std`) require. Building needs network access
+for the ACPICA clone and the `crates.io` dependencies (`smoltcp`, `webpki-roots`).
+
+**Manual path — the individual component build chain**
+
+```sh
+make -C CactLibc-x86_32              # libc (libc.a / libc.so / start.o)
+make -C Cactsole-x86_32 CACTLIB="../CactLibc-x86_32"
+make -C Cgoct-x86_32     CACTLIB="../CactLibc-x86_32"
+make -C CactUserBins-x86_32 install  # fills LocalRepo lib/bin, lib/sbin
+make -C LocalRepoCactOS-x86_32       # packs cctkfs.img (drivers + userland)
+make -C CactKernel-x86_32            # kernel.bin
+./build.sh --build                   # or assemble the ISO via grub-mkrescue
+```
+
+**Standalone `build.py`**
 
 ```sh
 python3 build.py                # auto-detects kernel.bin + cctkfs.img
-```
-
-Overrides via `config/local.mk.py` (see `config/local.mk.example`).
-
-```sh
 python3 build.py --help         # show available flags
 python3 build.py --non-gui-iso  # non-GUI ISO
 python3 build.py --gui-iso      # GUI ISO
 python3 build.py --no-deps      # skip rebuild, repack only
 ```
+
+`build.py` resolves sibling repositories by their current `-x86_32` names
+(`LocalRepoCactOS-x86_32`, `CactLibc-x86_32`, `*-for-Cact-x86_32`) with the
+legacy names as fallbacks, auto-**clones** any missing repo from
+`https://github.com/QwaYer/<repo>`, and installs the toolchain (system packages
+via pacman/apt/dnf + rust `nightly` + `rust-src`) when absent — so it works on a
+fresh machine. Provision only the toolchain and clones with `--deps`.
+
+Optional extra userland (the `tcc` compiler and `nano`) is skipped unless you
+set `CACT_BUILD_EXTRAS=1` (it isn't required for a bootable ISO).
+
+Overrides via `config/local.mk.py` (see `config/local.mk.example`).
 
 ---
 
