@@ -76,9 +76,6 @@ legacy names as fallbacks, auto-**clones** any missing repo from
 via pacman/apt/dnf + rust `nightly` + `rust-src`) when absent — so it works on a
 fresh machine. Provision only the toolchain and clones with `--deps`.
 
-Optional extra userland (the `tcc` compiler and `nano`) is skipped unless you
-set `CACT_BUILD_EXTRAS=1` (it isn't required for a bootable ISO).
-
 Overrides via `config/local.mk.py` (see `config/local.mk.example`).
 
 ---

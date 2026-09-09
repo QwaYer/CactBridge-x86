@@ -23,10 +23,6 @@ SRC = os.path.abspath(os.path.join(ROOT, ".."))
 JOBS = int(os.environ.get("JOBS", multiprocessing.cpu_count()))
 GITHUB = "https://github.com/QwaYer"
 
-# Optional extra userland binaries (tcc / nano). Cloning and building them is
-# not required for a bootable ISO, so they are fetched only when requested.
-BUILD_EXTRAS = os.environ.get("CACT_BUILD_EXTRAS", "0") == "1"
-
 # Preferred (current "-x86_32") names first, legacy names as fallbacks.
 REPO_CANDIDATES = {
     "kernel": ["CactKernel-x86_32"],
@@ -38,8 +34,6 @@ REPO_CANDIDATES = {
     "userbins": ["CactUserBins-x86_32"],
     "localrepo": ["LocalRepoCactOS-x86_32", "LocalRepoCactOS", "LocalRepoCactOS-non-gui"],
     "localrepo_gui": ["LocalRepoCactOS-gui"],
-    "tinycc": ["tinycc-for-CactOS"],
-    "nano": ["Nano-for-Cact"],
 }
 
 # Driver module repos: installed into the LocalRepo lib/ as *.cctk.
@@ -251,42 +245,6 @@ def run_make(target=None, opts=None, cwd=None, silent=True):
     subprocess.check_call(cmd)
 
 
-def build_tcc(repo_dir):
-    if not BUILD_EXTRAS:
-        return None
-    d = resolve("tinycc", required=False)
-    if not d:
-        return None
-    script = os.path.join(d, "build_cactos.sh")
-    out = os.path.join(d, "cactos-build", "tcc")
-    if not os.path.isfile(out):
-        if not os.path.isfile(script):
-            return None
-        try:
-            subprocess.check_call(["/bin/sh", script],
-                                  stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        except Exception as e:
-            print(f"  tcc build skipped ({e})")
-            return None
-    return out if os.path.isfile(out) else None
-
-
-def build_nano():
-    if not BUILD_EXTRAS:
-        return None
-    bin_path = os.path.join(SRC, "Nano-for-Cact", "build", "nano.elf")
-    if os.path.isfile(bin_path):
-        return bin_path
-    d = resolve("nano", required=False)
-    if not d:
-        return None
-    r = subprocess.run(["make", "-C", d], capture_output=True, text=True)
-    if r.returncode != 0:
-        print(f"  nano build skipped ({(r.stderr or r.stdout).strip()})")
-        return None
-    return bin_path if os.path.isfile(bin_path) else None
-
-
 def build_deps(variant):
     kern = resolve("kernel")
     libc = resolve("libc")
@@ -296,9 +254,6 @@ def build_deps(variant):
     repo = resolve("localrepo_gui" if variant == "gui" else "localrepo")
     repo_dir = repo
     libc_opts = {"CACTLIB": libc}
-
-    tcc_bin = build_tcc(repo_dir)
-    nano_bin = build_nano()
 
     print("Building dependencies...")
     run_make(cwd=libc)
@@ -310,10 +265,6 @@ def build_deps(variant):
         _p = os.path.join(repo_dir, _d)
         if os.path.isdir(_p):
             shutil.rmtree(_p)
-    if tcc_bin:
-        b = os.path.join(repo_dir, "lib", "bin")
-        os.makedirs(b, exist_ok=True)
-        shutil.copy2(tcc_bin, os.path.join(b, "tcc"))
 
     if variant == "gui":
         cgoct_gui = resolve("cgoct_gui")
@@ -331,7 +282,6 @@ def build_deps(variant):
             "USERBINS_MK": userbins,
             "LR_BIN": os.path.join(repo_dir, "lib", "bin"),
             "LR_SBIN": os.path.join(repo_dir, "lib", "sbin"),
-            "NANO_BIN": nano_bin or "",
         })
     else:
         run_make("install", {
@@ -352,11 +302,7 @@ def build_deps(variant):
             "CACTSOLEINC": os.path.join(sole, "include"),
             "LR_BIN": os.path.join(repo_dir, "lib", "bin"),
             "LR_SBIN": os.path.join(repo_dir, "lib", "sbin"),
-            "NANO_BIN": nano_bin or "",
         })
-        if not BUILD_EXTRAS:
-            print("  (skipping optional tcc/nano userland — set CACT_BUILD_EXTRAS=1 to add)")
-
     run_make("build/kernel.bin", cwd=kern)
 
 
