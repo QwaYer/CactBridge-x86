@@ -50,13 +50,14 @@ for the ACPICA clone and the `crates.io` dependencies (`smoltcp`, `webpki-roots`
 **Manual path — the individual component build chain**
 
 ```sh
-make -C CactLibc-x86_32              # libc (libc.a / libc.so / start.o)
-make -C Cactsole-x86_32 CACTLIB="../CactLibc-x86_32"
-make -C Cgoct-x86_32     CACTLIB="../CactLibc-x86_32"
-make -C CactUserBins-x86_32 install  # fills LocalRepo lib/bin, lib/sbin
-make -C LocalRepoCactOS-x86_32       # packs cctkfs.img (drivers + userland)
-make -C CactKernel-x86_32            # kernel.bin
-./build.sh --build                   # or assemble the ISO via grub-mkrescue
+meson setup CactLibc-x86_32/build-meson --cross-file CactLibc-x86_32/cross/i686-cact-clang.ini
+ninja -C CactLibc-x86_32/build-meson              # clibc.so / ld.so / start.o
+ninja -C Cactsole-x86_32/build-meson              # shell
+ninja -C Cgoct-x86_32/build-meson                 # init / supervisor
+ninja -C CactUserBins-x86_32/build-meson stage    # fills LocalRepo lib/bin, lib/sbin
+ninja -C LocalRepoCactOS-x86_32/build-meson stage # packs cctkfs.img (modules + userland)
+ninja -C CactKernel-x86_32/build-meson            # build-meson/kernel.bin
+python3 build.py --non-gui-iso                    # assemble the ISO via grub-mkrescue
 ```
 
 **Standalone `build.py`**

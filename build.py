@@ -39,11 +39,14 @@ REPO_CANDIDATES = {
 # Driver module repos: installed into the LocalRepo lib/ as *.cctk.
 DRIVERS = ["AHCI", "NVMe", "Virtio-net", "Yukon", "Intel-HDA"]
 
-REQUIRED_TOOLS = ["gcc", "make", "ar", "git", "nasm", "grub-mkrescue",
-                  "xorriso", "mformat", "python3", "rustup"]
+REQUIRED_TOOLS = ["gcc", "clang", "make", "meson", "ninja", "ar", "git", "nasm",
+                  "grub-mkrescue", "xorriso", "mformat", "python3", "rustup"]
 
 PACMAN_PKGS = {
     "gcc": "gcc",
+    "clang": "clang",
+    "meson": "meson",
+    "ninja": "ninja",
     "make": "base-devel",
     "ar": "binutils",
     "git": "git",
@@ -58,6 +61,9 @@ PACMAN_PKGS = {
 }
 APT_PKGS = {
     "gcc": "gcc",
+    "clang": "clang",
+    "meson": "meson",
+    "ninja": "ninja",
     "make": "make",
     "ar": "binutils",
     "git": "git",
@@ -70,6 +76,9 @@ APT_PKGS = {
 }
 DNF_PKGS = {
     "gcc": "gcc",
+    "clang": "clang",
+    "meson": "meson",
+    "ninja": "ninja",
     "make": "make",
     "ar": "binutils",
     "git": "git",
@@ -84,7 +93,7 @@ DNF_PKGS = {
 
 class Config:
     def __init__(self):
-        self.KERNEL_BIN = os.path.join(SRC, "CactKernel-x86_32", "build", "kernel.bin")
+        self.KERNEL_BIN = os.path.join(SRC, "CactKernel-x86_32", "build-meson", "kernel.bin")
         self.OUT_ISO = os.path.join(ROOT, "build", "cact.iso")
         self.STAGING_ROOT = os.path.join(ROOT, "build", "isodir")
         self.MB2_MODULE_SRC = ""
@@ -245,6 +254,25 @@ def run_make(target=None, opts=None, cwd=None, silent=True):
     subprocess.check_call(cmd)
 
 
+def run_ninja(target=None, cwd=None, setup_cross=None, opts=None):
+    """Build a Meson/Ninja project, configuring build-meson/ on first use."""
+    name = os.path.basename(cwd or ".")
+    print(f"  {name}...")
+    build_dir = os.path.join(cwd or ".", "build-meson")
+    opt_args = [f"-D{k}={v}" for k, v in (opts or {}).items()]
+    if not os.path.isfile(os.path.join(build_dir, "build.ninja")):
+        cmd = ["meson", "setup", build_dir]
+        if setup_cross:
+            cmd += ["--cross-file", setup_cross]
+        subprocess.check_call(cmd + opt_args, cwd=cwd)
+    elif opt_args:
+        subprocess.check_call(["meson", "configure", build_dir] + opt_args, cwd=cwd)
+    cmd = ["ninja", "-C", build_dir]
+    if target:
+        cmd.append(target)
+    subprocess.check_call(cmd)
+
+
 def build_deps(variant):
     kern = resolve("kernel")
     libc = resolve("libc")
@@ -254,12 +282,16 @@ def build_deps(variant):
     repo = resolve("localrepo_gui" if variant == "gui" else "localrepo")
     repo_dir = repo
     libc_opts = {"CACTLIB": libc}
+    # Meson spellings of the same paths (libc publishes under build-meson/).
+    libc_meson_opts = {"cactlib": libc}
 
     print("Building dependencies...")
-    run_make(cwd=libc)
+    run_ninja(cwd=libc, setup_cross="cross/i686-cact-clang.ini")
 
-    run_make(cwd=sole, opts=libc_opts)
-    run_make(cwd=cgoct, opts=libc_opts)
+    run_ninja(cwd=sole, setup_cross="cross/i686-cact-clang.ini",
+              opts=libc_meson_opts)
+    run_ninja(cwd=cgoct, setup_cross="cross/i686-cact-clang.ini",
+              opts=libc_meson_opts)
 
     for _d in ["lib/bin", "lib/sbin"]:
         _p = os.path.join(repo_dir, _d)
@@ -274,7 +306,9 @@ def build_deps(variant):
         for d in DRIVERS:
             drv = driver_dir(d)
             if drv:
-                run_make("install", {"KERN_ROOT": kern, "LOCAL_REPO": repo_dir}, drv)
+                run_ninja("stage", cwd=drv,
+                          setup_cross="cross/i686-cact-clang.ini",
+                          opts={"kern_root": kern, "local_repo": repo_dir})
         run_make(cwd=repo_dir, opts={
             "CACTLIB_DIR": libc,
             "XFBDEV_BIN": os.path.join(xfbdev, "build", "xfbdev"),
@@ -284,26 +318,25 @@ def build_deps(variant):
             "LR_SBIN": os.path.join(repo_dir, "lib", "sbin"),
         })
     else:
-        run_make("install", {
-            "CACTLIB": libc,
-            "CACTSOLEINC": os.path.join(sole, "include"),
-            "LR_BIN": os.path.join(repo_dir, "lib", "bin"),
-            "LR_SBIN": os.path.join(repo_dir, "lib", "sbin"),
-        }, userbins)
+        run_ninja("stage", cwd=userbins,
+                  setup_cross="cross/i686-cact-clang.ini",
+                  opts={"cactlib": libc,
+                        "cactsoleinc": os.path.join(sole, "include"),
+                        "lr_bin": os.path.join(repo_dir, "lib", "bin"),
+                        "lr_sbin": os.path.join(repo_dir, "lib", "sbin")})
         for d in DRIVERS:
             drv = driver_dir(d)
             if drv:
-                run_make("install", {"KERN_ROOT": kern, "LOCAL_REPO": repo_dir}, drv)
-        run_make(cwd=repo_dir, opts={
-            "CACTLIB_DIR": libc,
-            "CACTSOLE_BIN": os.path.join(sole, "cactsole"),
-            "CGOCT_BIN": os.path.join(cgoct, "cgoct"),
-            "USERBINS_MK": userbins,
-            "CACTSOLEINC": os.path.join(sole, "include"),
-            "LR_BIN": os.path.join(repo_dir, "lib", "bin"),
-            "LR_SBIN": os.path.join(repo_dir, "lib", "sbin"),
-        })
-    run_make("build/kernel.bin", cwd=kern)
+                run_ninja("stage", cwd=drv,
+                          setup_cross="cross/i686-cact-clang.ini",
+                          opts={"kern_root": kern, "local_repo": repo_dir})
+        run_ninja("stage", cwd=repo_dir,
+                  opts={"cactlib_dir": libc,
+                        "cactsole_bin": os.path.join(sole, "build-meson", "cactsole"),
+                        "cgoct_bin": os.path.join(cgoct, "build-meson", "cgoct"),
+                        "userbins_mk": userbins,
+                        "cactsoleinc": os.path.join(sole, "include")})
+    run_ninja("kernel.bin", cwd=kern, setup_cross="cross/i686-cact-clang.ini")
 
 
 def build_iso(cfg):
@@ -460,7 +493,7 @@ def main():
             build_deps(variant)
         repo = resolve("localrepo_gui" if variant == "gui" else "localrepo")
         cfg.MB2_MODULE_SRC = os.path.join(repo, "cctkfs.img")
-        cfg.KERNEL_BIN = os.path.join(resolve("kernel"), "build", "kernel.bin")
+        cfg.KERNEL_BIN = os.path.join(resolve("kernel"), "build-meson", "kernel.bin")
         build_iso(cfg)
         print(f"  -> {cfg.OUT_ISO}")
 

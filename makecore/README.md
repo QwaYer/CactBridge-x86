@@ -13,28 +13,29 @@ RUN_QEMU=1 ./build-cact-qemu.sh  # build + launch QEMU
 
 | Directory | Role | Standalone build |
 |---|---|---|
-| `CactKernel-x86_32` | Kernel | `make -C CactKernel-x86_32` |
-| `CactLib-x86_32` | libc | `make -C CactLib-x86_32` |
-| `Cactsole-x86_32` | Shell | `make -C Cactsole-x86_32` |
-| `Cgoct-x86_32` | Init (PID 1) | `make -C Cgoct-x86_32` |
-| `CactUserBins-x86_32` | User utilities | `make -C CactUserBins-x86_32 install` |
-| `LocalRepoCactOS` | cctkfs.img packer | `make -C LocalRepoCactOS` |
-| `CactBridge` | ISO packer (GRUB) | `make -C CactBridge iso` |
-| `AHCI-for-Cact` | AHCI driver | `make -C AHCI-for-Cact install` |
-| `NVMe-for-Cact` | NVMe driver | `make -C NVMe-for-Cact install` |
-| `Virtio-net-for-Cact` | virtio-net driver | `make -C Virtio-net-for-Cact install` |
-| `Yukon-for-Cact` | Yukon NIC driver | `make -C Yukon-for-Cact install` |
-| `CactOS-x86_32` | Workspace integrator | `make -C CactOS-x86_32 -j$(nproc)` |
+| `CactKernel-x86_32` | Kernel | `ninja -C CactKernel-x86_32/build-meson` |
+| `CactLibc-x86_32` | libc | `ninja -C CactLibc-x86_32/build-meson` |
+| `Cactsole-x86_32` | Shell | `ninja -C Cactsole-x86_32/build-meson` |
+| `Cgoct-x86_32` | Init (PID 1) | `ninja -C Cgoct-x86_32/build-meson` |
+| `CactUserBins-x86_32` | User utilities | `ninja -C CactUserBins-x86_32/build-meson stage` |
+| `LocalRepoCactOS-x86_32` | cctkfs.img packer | `ninja -C LocalRepoCactOS-x86_32/build-meson stage` |
+| `CactBridge-x86` | ISO packer (GRUB) | `python3 CactBridge-x86/build.py --non-gui-iso` |
+| `AHCI-for-Cact-x86_32` | AHCI driver | `ninja -C AHCI-for-Cact-x86_32/build-meson stage` |
+| `NVMe-for-Cact-x86_32` | NVMe driver | `ninja -C NVMe-for-Cact-x86_32/build-meson stage` |
+| `Virtio-net-for-Cact-x86_32` | virtio-net driver | `ninja -C Virtio-net-for-Cact-x86_32/build-meson stage` |
+| `Yukon-for-Cact-x86_32` | Yukon NIC driver | `ninja -C Yukon-for-Cact-x86_32/build-meson stage` |
+| `CactOS-x86_32` | Workspace integrator | `ninja -C CactOS-x86_32/build-meson stage` |
 
-Each component **auto-detects sibling directories** — just run `make` from its directory. Override paths with variables if needed (e.g. `make CACTLIB=/custom/path`).
+Every component is its own Meson project and **auto-detects sibling directories** — its `build-meson/` just needs one `meson setup build-meson --cross-file cross/i686-cact-clang.ini` (the integrator targets do that automatically on first use). Override paths with `-D` options, e.g. `meson configure build-meson -Dcactlib=/custom/path`.
 
 ## 🔧 Full build step by step
 
 ```sh
-make -C CactOS-x86_32 -j$(nproc)        # full ISO
-make -C CactOS-x86_32 -j$(nproc) disk   # ISO + nvme.img
-make -C CactOS-x86_32 -j$(nproc) kernel # kernel only
-SKIP_DRIVERS=1 make -C CactOS-x86_32    # skip driver rebuild
+ninja -C CactOS-x86_32/build-meson stage    # libc → shell → userbins → drivers → cctkfs.img
+ninja -C CactOS-x86_32/build-meson kernel   # kernel only
+ninja -C CactOS-x86_32/build-meson iso      # full ISO (non-GUI)
+ninja -C CactOS-x86_32/build-meson disk     # ISO + nvme.img
+ninja -C CactOS-x86_32/build-meson drivers  # out-of-tree modules only
 ```
 
 ## ▶️ Run in QEMU
