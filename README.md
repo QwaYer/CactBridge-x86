@@ -9,10 +9,8 @@
 </p>
 
 <p align="center">
-  <strong>English.</strong> ISO packager: copies a prebuilt <strong><code>kernel.bin</code></strong> and an optional <strong>Multiboot2 <code>module2</code></strong> (e.g. <strong><code>cctkfs.img</code></strong>) into a staging tree and runs <strong><code>grub-mkrescue</code></strong>.<br>
-  <strong>2.0.0:</strong> rewritten from Makefile to <strong><code>build.py</code></strong>. Supports <code>--gui-iso</code>, <code>--non-gui-iso</code>, <code>--no-deps</code> flags. Auto-detects sibling repos.<br>
-  <strong>Русский.</strong> «Мост» для сборки <strong>ISO</strong>: <strong><code>build.py</code></strong> оркестрирует ядро, модули и <strong><code>grub-mkrescue</code></strong>.<br>
-  <strong>2.0.0:</strong> переписан с Makefile на <strong><code>build.py</code></strong> с поддержкой GUI и non-GUI сборок.
+  ISO packager: copies a prebuilt <strong><code>kernel.bin</code></strong> and an optional <strong>Multiboot2 <code>module2</code></strong> (e.g. <strong><code>cctkfs.img</code></strong>) into a staging tree and runs <strong><code>grub-mkrescue</code></strong>.<br>
+  <strong>2.0.0:</strong> rewritten from Makefile to <strong><code>build.py</code></strong>. Supports <code>--gui-iso</code>, <code>--non-gui-iso</code>, <code>--no-deps</code> flags. Auto-detects sibling repos.
 </p>
 
 ---
@@ -34,14 +32,14 @@
 One command installs missing dependencies and builds kernel + cctkfs.img + ISO:
 
 ```sh
-./build.sh            # check deps, install missing, build everything
-./build.sh --deps     # install/detect dependencies only (pacman + rustup nightly)
-./build.sh --build    # build only (deps already installed)
-./build.sh --run      # build, then launch QEMU
-./build.sh --clean    # clean build artefacts
+python3 build.py           # check deps, install missing, build everything
+python3 build.py --deps    # install/detect dependencies only (packages + rustup nightly)
+python3 build.py --no-deps # skip dependency builds, repack only
+python3 build.py --run     # build, then launch QEMU
+python3 build.py --clean   # clean CactBridge artefacts
 ```
 
-Required packages (installed automatically via `pacman`): `base-devel`, `binutils`,
+Required packages (installed automatically via the system package manager): `base-devel`, `binutils`,
 `nasm`, `grub`, `xorriso`, `mtools`, `python`, `e2fsprogs`, `rustup`.
 `rustup` is then configured to **nightly** with the `rust-src` component, which the
 kernel's Rust subsystems (`-Z build-std`) require. Building needs network access
@@ -77,7 +75,7 @@ legacy names as fallbacks, auto-**clones** any missing repo from
 via pacman/apt/dnf + rust `nightly` + `rust-src`) when absent — so it works on a
 fresh machine. Provision only the toolchain and clones with `--deps`.
 
-Overrides via `config/local.mk.py` (see `config/local.mk.example`).
+Overrides via `python3 build.py --local-config FILE` (see `config/local.mk.example`).
 
 ---
 
@@ -85,7 +83,7 @@ Overrides via `config/local.mk.py` (see `config/local.mk.example`).
 
 ```
 CactBridge/
-├── build.py               # ISO builder — orchestrates make in siblings + grub-mkrescue
+├── build.py               # ISO builder — orchestrates meson/ninja builds in siblings + grub-mkrescue
 ├── config/
 │   └── local.mk.example   # example local overrides
 ├── grub/
