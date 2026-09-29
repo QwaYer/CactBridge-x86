@@ -37,7 +37,11 @@ REPO_CANDIDATES = {
 }
 
 # Driver module repos: installed into the LocalRepo lib/ as *.cctk.
-DRIVERS = ["AHCI", "NVMe", "Virtio-net", "Yukon", "Intel-HDA"]
+# This list must mirror the integrator's (CactOS-x86_32 meson.build
+# _driver_names): a repo missing here is silently never built, so the image
+# keeps whatever stale .cctk already sits in the LocalRepo lib/ tree.
+DRIVERS = ["AHCI", "NVMe", "Virtio-net", "Yukon", "Intel-HDA",
+           "EXT4", "FAT32", "RT2800USB"]
 
 REQUIRED_TOOLS = ["gcc", "clang", "make", "meson", "ninja", "ar", "git", "nasm",
                   "grub-mkrescue", "xorriso", "mformat", "python3", "rustup"]
@@ -381,8 +385,25 @@ ENV_PROJECTS = [
     "LocalRepoCactOS-non-gui",
     "AHCI-for-Cact-x86_32", "NVMe-for-Cact-x86_32",
     "Virtio-net-for-Cact-x86_32", "Yukon-for-Cact-x86_32",
-    "Intel-HDA-for-Cact-x86_32",
+    "Intel-HDA-for-Cact-x86_32", "EXT4-for-Cact-x86_32",
+    "FAT32-for-Cact-x86_32", "RT2800USB-for-Cact-x86_32",
 ]
+
+
+def _clean_project(d):
+    """Clean one sibling tree.  Meson/Ninja is the build system now, so a repo
+    is cleaned through its build-meson/ dir; a Makefile is handled only for the
+    few legacy trees that still have one."""
+    build_dir = os.path.join(d, "build-meson")
+    if os.path.isfile(os.path.join(build_dir, "build.ninja")):
+        subprocess.check_call(["ninja", "-C", build_dir, "clean"],
+                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        return True
+    if os.path.isfile(os.path.join(d, "Makefile")):
+        subprocess.check_call(["make", "-C", d, "clean", "-s"],
+                              stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        return True
+    return False
 
 
 def clean(cfg, env=False):
@@ -393,10 +414,7 @@ def clean(cfg, env=False):
     if env:
         for name in ENV_PROJECTS:
             d = os.path.join(SRC, name)
-            mf = os.path.join(d, "Makefile")
-            if os.path.isdir(d) and os.path.isfile(mf):
-                subprocess.check_call(["make", "-C", d, "clean", "-s"],
-                                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            if os.path.isdir(d) and _clean_project(d):
                 print(f"  cleaned  {name}")
 
 
