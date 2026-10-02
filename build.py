@@ -41,7 +41,7 @@ REPO_CANDIDATES = {
 # _driver_names): a repo missing here is silently never built, so the image
 # keeps whatever stale .cctk already sits in the LocalRepo lib/ tree.
 DRIVERS = ["AHCI", "NVMe", "Virtio-net", "Yukon", "Intel-HDA",
-           "EXT4", "FAT32", "RT2800USB"]
+           "EXT4", "FAT32", "RT2800USB", "Intel-GPU"]
 
 REQUIRED_TOOLS = ["gcc", "clang", "make", "meson", "ninja", "ar", "git", "nasm",
                   "grub-mkrescue", "xorriso", "mformat", "python3", "rustup"]
@@ -387,6 +387,7 @@ ENV_PROJECTS = [
     "Virtio-net-for-Cact-x86_32", "Yukon-for-Cact-x86_32",
     "Intel-HDA-for-Cact-x86_32", "EXT4-for-Cact-x86_32",
     "FAT32-for-Cact-x86_32", "RT2800USB-for-Cact-x86_32",
+    "Intel-GPU-for-Cact-x86_32",
 ]
 
 
