@@ -3,7 +3,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/license-GPLv3-blue.svg?style=for-the-badge" alt="License: GPLv3">
   <img src="https://img.shields.io/badge/role-ISO%20packager-purple.svg?style=for-the-badge" alt="Role: ISO packager">
-  <img src="https://img.shields.io/badge/output-cact.iso-green.svg?style=for-the-badge" alt="Output: cact.iso">
+  <img src="https://img.shields.io/badge/output-cact--gui.iso%20%2F%20cact--non--gui.iso-green.svg?style=for-the-badge" alt="Output: cact-gui.iso / cact-non-gui.iso">
   <img src="https://img.shields.io/badge/boot-Multiboot2-orange.svg?style=for-the-badge" alt="Boot: Multiboot2">
   <img src="https://img.shields.io/badge/version-2.0.0-yellow.svg?style=for-the-badge" alt="2.0.0">
 </p>
@@ -32,15 +32,16 @@
 One command installs missing dependencies and builds kernel + cctkfs.img + ISO:
 
 ```sh
-python3 build.py           # check deps, install missing, build everything
-python3 build.py --deps    # install/detect dependencies only (packages + rustup nightly)
-python3 build.py --no-deps # skip dependency builds, repack only
-python3 build.py --run     # build, then launch QEMU
-python3 build.py --clean   # clean CactBridge artefacts
+python3 build.py --non-gui-iso            # check deps, install missing, build non-GUI ISO
+python3 build.py --gui-iso                # same, GUI ISO
+python3 build.py --deps                   # install/detect dependencies only (packages + rustup nightly)
+python3 build.py --non-gui-iso --no-deps  # skip dependency builds, repack only
+python3 build.py --non-gui-iso --run      # build, then launch QEMU
+python3 build.py --clean                  # clean CactBridge artefacts
 ```
 
 Required packages (installed automatically via the system package manager): `base-devel`, `binutils`,
-`nasm`, `grub`, `xorriso`, `mtools`, `python`, `e2fsprogs`, `rustup`.
+`clang`, `gcc`, `git`, `grub`, `meson`, `ninja`, `nasm`, `python`, `rustup`, `xorriso`, `mtools`.
 `rustup` is then configured to **nightly** with the `rust-src` component, which the
 kernel's Rust subsystems (`-Z build-std`) require. Building needs network access
 for the ACPICA clone and the `crates.io` dependencies (`smoltcp`, `webpki-roots`).
@@ -61,11 +62,10 @@ python3 build.py --non-gui-iso                    # assemble the ISO via grub-mk
 **Standalone `build.py`**
 
 ```sh
-python3 build.py                # auto-detects kernel.bin + cctkfs.img
-python3 build.py --help         # show available flags
-python3 build.py --non-gui-iso  # non-GUI ISO
-python3 build.py --gui-iso      # GUI ISO
-python3 build.py --no-deps      # skip rebuild, repack only
+python3 build.py --help                  # show available flags
+python3 build.py --non-gui-iso           # non-GUI ISO (auto-detects kernel.bin + cctkfs.img)
+python3 build.py --gui-iso               # GUI ISO
+python3 build.py --non-gui-iso --no-deps # skip rebuild, repack only
 ```
 
 `build.py` resolves sibling repositories by their current `-x86_32` names
@@ -84,10 +84,13 @@ Overrides via `python3 build.py --local-config FILE` (see `config/local.mk.examp
 ```
 CactBridge/
 ├── build.py               # ISO builder — orchestrates meson/ninja builds in siblings + grub-mkrescue
+├── drivers.list           # canonical out-of-tree module list (read by build.py and CactOS meson)
 ├── config/
 │   └── local.mk.example   # example local overrides
 ├── grub/
 │   ├── menu-with-mb2.cfg
-│   └── menu-kernel-only.cfg
-└── build/                 # staging + cact.iso (generated)
+│   ├── menu-kernel-only.cfg
+│   └── menu-ramroot.cfg
+├── makecore/              # workspace-root wrappers (Makefile, build.sh, README)
+└── build/                 # staging + cact-gui.iso / cact-non-gui.iso (generated)
 ```
