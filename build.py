@@ -36,12 +36,27 @@ REPO_CANDIDATES = {
     "localrepo_gui": ["LocalRepoCactOS-gui"],
 }
 
-# Driver module repos: installed into the LocalRepo lib/ as *.cctk.
-# This list must mirror the integrator's (CactOS-x86_32 meson.build
-# _driver_names): a repo missing here is silently never built, so the image
-# keeps whatever stale .cctk already sits in the LocalRepo lib/ tree.
-DRIVERS = ["AHCI", "NVMe", "Virtio-net", "Yukon", "Intel-HDA",
-           "EXT4", "FAT32", "RT2800USB", "Intel-GPU"]
+# Driver module repos: installed into the LocalRepo lib/ as *.cctk.  The
+# canonical list lives in drivers.list (next to this script) as the single
+# source of truth, so the integrator (CactOS-x86_32 meson.build) reads the same
+# file and the two cannot drift.  A repo missing from the list is silently never
+# built, and the image keeps whatever stale .cctk already sits in the LocalRepo
+# lib/ tree.
+def _load_drivers():
+    path = os.path.join(ROOT, "drivers.list")
+    if not os.path.isfile(path):
+        print(f"ERROR: driver list not found: {path}", file=sys.stderr)
+        sys.exit(1)
+    with open(path) as f:
+        names = [ln.split("#", 1)[0].strip() for ln in f]
+    names = [n for n in names if n]
+    if not names:
+        print(f"ERROR: driver list is empty: {path}", file=sys.stderr)
+        sys.exit(1)
+    return names
+
+
+DRIVERS = _load_drivers()
 
 REQUIRED_TOOLS = ["gcc", "clang", "make", "meson", "ninja", "ar", "git", "nasm",
                   "grub-mkrescue", "xorriso", "mformat", "python3", "rustup"]
@@ -471,7 +486,8 @@ def main():
 
     args = parser.parse_args()
 
-    if not (args.gui_iso or args.non_gui_iso or args.clean or args.clean_env or args.deps):
+    if not (args.gui_iso or args.non_gui_iso or args.clean
+            or args.clean_env or args.deps):
         parser.error("specify --gui-iso, --non-gui-iso, --deps, --clean, or --clean-env")
 
     cfg = Config()

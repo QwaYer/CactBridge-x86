@@ -1,0 +1,20 @@
+# Canonical driver-module list for CactOS x86_32 (PLAN-2.0.0 P3.1).
+#
+# One repository name per line; the "-for-Cact-x86_32" suffix is implied.
+# Blank lines and everything after a '#' are ignored.
+#
+# This file is the single source of truth for which modules are built and
+# installed into the LocalRepo lib/ tree as *.cctk: CactBridge's build.py reads
+# it (its own directory) and the CactOS-x86_32 integrator reads the same file
+# through its -Dbridge path.  Add or remove entries here only — never re-list
+# drivers in a build script, so the image cannot silently keep a stale .cctk.
+AHCI
+NVMe
+Virtio-net
+Virtio-gpu
+Yukon
+Intel-HDA
+EXT4
+FAT32
+RT2800USB
+Intel-GPU
