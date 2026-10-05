@@ -5,8 +5,8 @@ Monolithic OS for **i686**: low-level in **C**, critical subsystems in **Rust**.
 ## 🚀 Quick Build
 
 ```sh
-./build-cact-qemu.sh           # full ISO + empty ext4 disk
-RUN_QEMU=1 ./build-cact-qemu.sh  # build + launch QEMU
+python3 CactBridge-x86/build.py --non-gui-iso         # full ISO (+ empty ext4 disk on first --run)
+python3 CactBridge-x86/build.py --non-gui-iso --run   # build + launch QEMU
 ```
 
 ## 📦 Components
